@@ -3,87 +3,67 @@
 #include <stdio.h>
 
 int queue_add(void* new_object, queue_object* queue) {
-    // Allocate memory for a new queue_object
-    queue_object* new_queue_object = (queue_object*)malloc(sizeof(queue_object));
-    if (new_queue_object == NULL) {
-        // Memory allocation failed
-        return 1;
+    if (queue == NULL) {
+        return 1; // Queue doesn't exist
     }
 
-    // Set the object and next pointer of the new queue_object
-    new_queue_object->object = new_object;
-    new_queue_object->next = NULL;
+    queue_object* new_queue_obj = (queue_object*)malloc(sizeof(queue_object));
+    if (new_queue_obj == NULL) {
+        return 1; // Memory allocation failed
+    }
 
-    // If the queue is empty, set the new queue_object as the head of the queue
+    new_queue_obj->object = new_object;
+    new_queue_obj->next = NULL;
+
     if (queue->next == NULL) {
-        queue->next = new_queue_object;
+        queue->next = new_queue_obj;
     } else {
-        // Find the last queue_object in the queue
-        queue_object* current = queue->next;
-        while (current->next != NULL) {
-            current = current->next;
+        queue_object* temp = queue->next;
+        while (temp->next != NULL) {
+            temp = temp->next;
         }
-
-        // Append the new queue_object to the end of the queue
-        current->next = new_queue_object;
+        temp->next = new_queue_obj;
     }
 
-    return 0;
+    return 0; // Successfully added to the queue
 }
 
 void* queue_poll(queue_object* queue) {
-    if (queue->next == NULL) {
-        // The queue is empty
-        return NULL;
+    if (queue == NULL || queue->next == NULL) {
+        return NULL; // Queue is empty
     }
 
-    // Get the oldest item from the queue
-    queue_object* oldest = queue->next;
-    void* oldest_object = oldest->object;
-
-    // Update the head of the queue
-    queue->next = oldest->next;
-
-    // Free the memory of the removed queue_object
-    free(oldest);
-
-    return oldest_object;
+    queue_object* removed_obj = queue->next;
+    queue->next = removed_obj->next;
+    void* object = removed_obj->object;
+    free(removed_obj);
+    return object;
 }
 
 queue_object* new_queue() {
-    // Allocate memory for the head queue_object
-    queue_object* head = (queue_object*)malloc(sizeof(queue_object));
-    if (head == NULL) {
-        // Memory allocation failed
-        return NULL;
+    queue_object* queue = (queue_object*)malloc(sizeof(queue_object));
+    if (queue != NULL) {
+        queue->object = NULL;
+        queue->next = NULL;
     }
-
-    // Initialize the head queue_object
-    head->object = NULL;
-    head->next = NULL;
-
-    return head;
+    return queue;
 }
 
 void free_queue(queue_object* queue) {
-    // Free all queue_objects in the queue
-    queue_object* current = queue->next;
-    while (current != NULL) {
-        queue_object* next = current->next;
-        free(current);
-        current = next;
+    if (queue != NULL) {
+        queue_object* current = queue->next;
+        while (current != NULL) {
+            queue_object* next = current->next;
+            free(current);
+            current = next;
+        }
+        free(queue);
     }
-
-    // Free the head queue_object
-    free(queue);
 }
 
 void* queue_peek(queue_object* queue) {
-    if (queue->next == NULL) {
-        // The queue is empty
-        return NULL;
+    if (queue == NULL || queue->next == NULL) {
+        return NULL; // Queue is empty
     }
-
-    // Get the oldest item from the queue
     return queue->next->object;
 }

@@ -1,4 +1,6 @@
 #include "../lib/HRRN.h"
+#include <stdlib.h>
+#include <stdio.h>
 
 static queue_object* HRRN_queue;
 //You can add more global variables and structs here
@@ -24,31 +26,11 @@ int HRRN_startup(){
 
 process* HRRN_new_arrival(process* arriving_process, process* running_process){
     if (arriving_process != NULL) {
-        // Calculate response ratio for the arriving process
-        float rr = (float)(arriving_process->waiting_time + arriving_process->burst_time) / (float)arriving_process->burst_time;
-
-        // Create a new HRRN_process to hold the process and its response ratio
-        HRRN_process* new_hrrn_process = (HRRN_process*)malloc(sizeof(HRRN_process));
-        new_hrrn_process->this_process = arriving_process;
-        new_hrrn_process->waiting_time = 0;
-        new_hrrn_process->rr = rr;
-
-        // Add the HRRN_process to the queue
-        queue_add(new_hrrn_process, HRRN_queue);
+        queue_add(arriving_process, HRRN_queue);
     }
-
     return running_process;
 }
 
 void HRRN_finish(){
-    // Free the HRRN_process objects in the queue
-    queue_object* current = HRRN_queue->next;
-    while (current != NULL) {
-        HRRN_process* hrrn_process = (HRRN_process*)current->object;
-        free(hrrn_process);
-        current = current->next;
-    }
-
-    // Free the queue
     free_queue(HRRN_queue);
 }

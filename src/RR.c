@@ -2,6 +2,7 @@
 
 static queue_object* RR_queue;
 //You can add more global variables
+static int RR_quantum;
 
 process* RR_tick (process* running_process){
     if (running_process == NULL) {

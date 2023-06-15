@@ -5,17 +5,33 @@ static queue_object* SJN_queue;
 
 process* SJN_tick (process* running_process){
     if (running_process == NULL) {
-        // If there is no running process, select the next process from the queue
-        running_process = queue_poll(SJN_queue);
+        // Kein Prozess wurde zuvor ausgeführt
+        if (SJN_queue != NULL) {
+            // Warteschlange ist nicht leer, wähle den Prozess mit der kürzesten Ausführungszeit aus
+            running_process = (process*)queue_poll(SJN_queue);
+        }
+    } else {
+        // Ein Prozess wurde zuvor ausgeführt
+        if (SJN_queue != NULL) {
+            // Warteschlange ist nicht leer, vergleiche die Ausführungszeit des laufenden Prozesses mit dem ersten Prozess in der Warteschlange
+            process* next_process = (process*)queue_peek(SJN_queue);
+            if (next_process != NULL && next_process->time_left < running_process->time_left) {
+                // Der Prozess in der Warteschlange hat eine kürzere Ausführungszeit, wechsle zum nächsten Prozess
+                running_process = (process*)queue_poll(SJN_queue);
+                // Füge den aktuellen Prozess wieder in die Warteschlange ein
+                queue_add(running_process, SJN_queue);
+            }
+        }
     }
 
     return running_process;
 }
 
 int SJN_startup(){
+    // Erstelle die Warteschlange
     SJN_queue = new_queue();
     if (SJN_queue == NULL) {
-        return 1; // Error: Failed to create the queue
+        return 1;
     }
 
     return 0;
@@ -23,29 +39,16 @@ int SJN_startup(){
 
 process* SJN_new_arrival(process* arriving_process, process* running_process){
     if (arriving_process != NULL) {
-        // Add the arriving process to the queue based on its burst time
-        process* current_process = SJN_queue->head;
-        process* previous_process = NULL;
-
-        while (current_process != NULL && arriving_process->burst_time > current_process->burst_time) {
-            previous_process = current_process;
-            current_process = current_process->next;
-        }
-
-        if (previous_process == NULL) {
-            // The arriving process has the shortest burst time, so it becomes the new head of the queue
-            SJN_queue->head = arriving_process;
-        } else {
-            // Insert the arriving process between previous_process and current_process
-            previous_process->next = arriving_process;
-        }
-
-        arriving_process->next = current_process;
+        // Füge den neu ankommenden Prozess in die Warteschlange ein
+        queue_add(arriving_process, SJN_queue);
     }
 
-    return running_process;
+    // Überprüfe, ob ein Prozesswechsel erforderlich ist
+    return SJN_tick(running_process);
 }
 
 void SJN_finish(){
+    // Lösche die Warteschlange
     free_queue(SJN_queue);
+    SJN_queue = NULL;
 }

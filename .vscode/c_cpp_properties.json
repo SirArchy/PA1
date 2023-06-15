@@ -3,7 +3,9 @@
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "<stdlib.h>",
+                "../lib/HRRN.h\""
             ],
             "defines": [
                 "_DEBUG",
