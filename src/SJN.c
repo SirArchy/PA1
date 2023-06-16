@@ -2,53 +2,46 @@
 
 static queue_object* SJN_queue;
 //You can add more global variables here
+static process* running_process = NULL;
 
 process* SJN_tick (process* running_process){
-    if (running_process == NULL) {
-        // Kein Prozess wurde zuvor ausgeführt
-        if (SJN_queue != NULL) {
-            // Warteschlange ist nicht leer, wähle den Prozess mit der kürzesten Ausführungszeit aus
-            running_process = (process*)queue_poll(SJN_queue);
-        }
-    } else {
-        // Ein Prozess wurde zuvor ausgeführt
-        if (SJN_queue != NULL) {
-            // Warteschlange ist nicht leer, vergleiche die Ausführungszeit des laufenden Prozesses mit dem ersten Prozess in der Warteschlange
-            process* next_process = (process*)queue_peek(SJN_queue);
-            if (next_process != NULL && next_process->time_left < running_process->time_left) {
-                // Der Prozess in der Warteschlange hat eine kürzere Ausführungszeit, wechsle zum nächsten Prozess
-                running_process = (process*)queue_poll(SJN_queue);
-                // Füge den aktuellen Prozess wieder in die Warteschlange ein
-                queue_add(running_process, SJN_queue);
-            }
-        }
-    }
-
     return running_process;
 }
 
 int SJN_startup(){
-    // Erstelle die Warteschlange
+    // Erstelle eine leere Warteschlange für den SJN-Algorithmus
     SJN_queue = new_queue();
     if (SJN_queue == NULL) {
-        return 1;
+        return 1; // Fehler beim Erstellen der Warteschlange
     }
-
-    return 0;
+    
+    running_process = NULL; // Kein aktiver Prozess zu Beginn
+    
+    return 0; // Alles erfolgreich initialisiert
 }
 
 process* SJN_new_arrival(process* arriving_process, process* running_process){
-    if (arriving_process != NULL) {
-        // Füge den neu ankommenden Prozess in die Warteschlange ein
-        queue_add(arriving_process, SJN_queue);
+    if (running_process == NULL) {
+        // Es gibt keinen aktiven Prozess, der neu ankommende Prozess wird gestartet
+        running_process = arriving_process;
+    } else {
+        // Es gibt einen aktiven Prozess
+        if (arriving_process->time_left < running_process->time_left) {
+            // Der neu ankommende Prozess hat eine kürzere verbleibende Zeit als der aktive Prozess
+            // Der aktive Prozess wird in die Warteschlange verschoben und der neue Prozess wird gestartet
+            queue_add(running_process, SJN_queue);
+            running_process = arriving_process;
+        } else {
+            // Der neu ankommende Prozess hat eine längere oder gleiche verbleibende Zeit wie der aktive Prozess
+            // Der neue Prozess wird in die Warteschlange verschoben
+            queue_add(arriving_process, SJN_queue);
+        }
     }
-
-    // Überprüfe, ob ein Prozesswechsel erforderlich ist
-    return SJN_tick(running_process);
+    
+    return running_process;
 }
 
 void SJN_finish(){
-    // Lösche die Warteschlange
+    // Leere die Warteschlange und gib den Speicher frei
     free_queue(SJN_queue);
-    SJN_queue = NULL;
 }

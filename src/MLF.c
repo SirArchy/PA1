@@ -3,7 +3,9 @@
 
 static queue_object** MLF_queues;
 //You can add more global variables here
-static int num_queues;
+static int current_level;
+static int MAX_LEVELS = 4;
+
 int factorial(int n) {
     if (n == 0 || n == 1) {
         return 1;
@@ -13,19 +15,36 @@ int factorial(int n) {
 }
 
 process* MLF_tick (process* running_process){
-    if (running_process == NULL || running_process->time_left == 0) {
-        // Find the highest priority queue with a process
-        int i;
-        for (i = 0; i < num_queues; i++) {
-            if (MLF_queues[i]->next != NULL) {
+    // Check if there is a running process
+    if (running_process == NULL) {
+        // Get the highest priority process from the highest non-empty queue
+        for (int i = current_level; i >= 0; i--) {
+            if (queue_peek(MLF_queues[i]) != NULL) {
                 running_process = (process*)queue_poll(MLF_queues[i]);
+                current_level = i;
                 break;
             }
         }
-    }
-    
-    if (running_process != NULL) {
+    } else {
+        // Decrement the remaining time of the running process
         running_process->time_left--;
+
+        // Check if the time quantum for the current level has expired
+        unsigned int time_quantum = factorial(current_level + 1);
+        if (running_process->time_left > 0 && running_process->time_left % time_quantum == 0) {
+            // Move the process to the next lower level
+            if (current_level < MAX_LEVELS - 1) {
+                current_level++;
+                queue_add(running_process, MLF_queues[current_level]);
+                running_process = NULL;
+            }
+        }
+
+        // Check if the running process has completed its execution
+        if (running_process->time_left == 0) {
+            free(running_process);
+            running_process = NULL;
+        }
     }
 
     return running_process;
@@ -35,30 +54,24 @@ process* MLF_tick (process* running_process){
  * @result 0 if everything was fine. Any other number if there was an error.
  */
 int MLF_startup(){
-    num_queues = 4;
-    MLF_queues = (queue_object**)malloc(num_queues * sizeof(queue_object*));
-    if (MLF_queues == NULL) {
-        return 1;
+    // Initialize the MLF queues
+    MLF_queues = (queue_object**)malloc(sizeof(queue_object*) * MAX_LEVELS);
+    for (int i = 0; i < MAX_LEVELS; i++) {
+        MLF_queues[i] = new_queue();
     }
 
-    int i;
-    for (i = 0; i < num_queues; i++) {
-        MLF_queues[i] = new_queue();
-        if (MLF_queues[i] == NULL) {
-            return 1;
-        }
-    }
+    current_level = 0;
 
     return 0;
 }
 
 process* MLF_new_arrival(process* arriving_process, process* running_process) {
-    if (arriving_process != NULL) {
-        // Calculate the queue index based on the factorial of its priority
-        int queue_index = factorial(arriving_process->priority);
-
-        // Add the arriving process to the appropriate queue
-        queue_add(arriving_process, MLF_queues[queue_index]);
+    // Check if there is a running process
+    if (running_process == NULL) {
+        running_process = arriving_process;
+    } else {
+        // Add the arriving process to the lowest level queue
+        queue_add(arriving_process, MLF_queues[0]);
     }
 
     return running_process;
@@ -68,8 +81,8 @@ process* MLF_new_arrival(process* arriving_process, process* running_process) {
  * is called once after the all processes were handled. In case you want to cleanup something
  */
 void MLF_finish() {
-    int i;
-    for (i = 0; i < num_queues; i++) {
+    // Free the MLF queues
+    for (int i = 0; i < MAX_LEVELS; i++) {
         free_queue(MLF_queues[i]);
     }
     free(MLF_queues);
